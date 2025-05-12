@@ -80,7 +80,7 @@ namespace Console.Expressions
         {
             Console.Clear();
 
-            Contact contact = new Contact("Gerhard", 64);
+            Contact contact = new Contact("Gerhard", new DateTime(1960,6,28));
 
             SQLGenerator<Contact> cr = new SQLGenerator<Contact>(contact);
             string result = cr.Insert().ToSql();
