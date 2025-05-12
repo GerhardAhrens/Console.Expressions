@@ -1,0 +1,37 @@
+//-----------------------------------------------------------------------
+// <copyright file="SqlComparison.cs" company="Lifeprojects.de">
+//     Class: SqlComparison
+//     Copyright © PTA GmbH 2017
+// </copyright>
+//
+// <author>Gerhard Ahrens - Lifeprojects.de</author>
+// <email>development@lifeprojects.de</email>
+// <date>08.08.2017</date>
+//
+// <summary>
+//   Definition of SqlComparison Class
+//   Represents comparison operators for WHERE, HAVING and JOIN clauses
+// </summary>
+//-----------------------------------------------------------------------
+
+namespace Console.Expressions
+{
+    public enum SQLComparison
+    {
+        None = 0,
+        Equals,
+        NotEquals,
+        Like,
+        NotLike,
+        GreaterThan,
+        GreaterOrEquals,
+        LessThan,
+        LessOrEquals,
+        In,
+        IsNull,
+        IsNotNull,
+        Sql,
+        SqlNative,
+        SubSelect
+    }
+}

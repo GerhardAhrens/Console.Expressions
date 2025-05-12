@@ -24,8 +24,12 @@ namespace Console.Expressions
         ISQLGenerator<TEntity> Insert();
         ISQLGenerator<TEntity> Select(SelectOperator selectOperator = SelectOperator.All, int limit = 0);
 
-        ISQLGenerator<TEntity> Where(Expression<Func<TEntity, object>> expressions, string sqlOperator, object value);
-        ISQLGenerator<TEntity> AndWhere(Expression<Func<TEntity, object>> expressions, string sqlOperator, object value);
+        ISQLGenerator<TEntity> Where(Expression<Func<TEntity, object>> expressions, SQLComparison sqlOperator, object value);
+        ISQLGenerator<TEntity> AndWhere(Expression<Func<TEntity, object>> expressions, SQLComparison sqlOperator, object value);
+        ISQLGenerator<TEntity> OrWhere(SQLComparison sqlOperator, object value);
+
+        ISQLGenerator<TEntity> OrderBy(Expression<Func<TEntity, object>> expressions, SQLSorting sorting = SQLSorting.Ascending);
+        ISQLGenerator<TEntity> AndOrderBy(Expression<Func<TEntity, object>> expressions, SQLSorting sorting = SQLSorting.Ascending);
 
         string ToSql();
     }

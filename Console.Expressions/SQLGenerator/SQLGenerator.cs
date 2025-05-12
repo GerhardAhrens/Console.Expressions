@@ -39,6 +39,8 @@ namespace Console.Expressions
 
         public TEntity Entity { get; private set; }
 
+        private string PropertyNameWhere { get; set; }
+
         public ISQLGenerator<TEntity> CreateTable()
         {
             string tableName = this.DataTableAttributes();
@@ -213,9 +215,22 @@ namespace Console.Expressions
             return this;
         }
 
-        public ISQLGenerator<TEntity> Where(Expression<Func<TEntity, object>> expressions, string sqlOperator, object value)
+        public ISQLGenerator<TEntity> Select(SelectOperator selectOperator, string sqlText = "")
         {
-            string propertyName = ExpressionPropertyName.For<TEntity>(expressions);
+            string tableName = this.DataTableAttributes();
+            sb.Clear();
+
+            if (selectOperator == SelectOperator.Direct)
+            {
+                sb.Append(sqlText);
+            }
+
+            return this;
+        }
+
+        public ISQLGenerator<TEntity> Where(Expression<Func<TEntity, object>> expressions, SQLComparison sqlCompare, object value)
+        {
+            this.PropertyNameWhere = ExpressionPropertyName.For<TEntity>(expressions);
 
             if (sb.ToString().Contains("WHERE", StringComparison.OrdinalIgnoreCase) == false)
             {
@@ -223,15 +238,15 @@ namespace Console.Expressions
             }
 
             sb.Append('(');
-            sb.Append(propertyName);
-            sb.Append(' ').Append(sqlOperator).Append(' ');
+            sb.Append(this.PropertyNameWhere);
+            sb.Append(' ').Append(this.WhereOperatorAsText(sqlCompare)).Append(' ');
             sb.Append($"'{value}'");
             sb.Append(')');
 
             return this;
         }
 
-        public ISQLGenerator<TEntity> AndWhere(Expression<Func<TEntity, object>> expressions, string sqlOperator, object value)
+        public ISQLGenerator<TEntity> AndWhere(Expression<Func<TEntity, object>> expressions, SQLComparison sqlCompare, object value)
         {
             string propertyName = ExpressionPropertyName.For<TEntity>(expressions);
 
@@ -240,9 +255,59 @@ namespace Console.Expressions
                 sb.Append(' ').Append('\n').Append("AND").Append(' ');
                 sb.Append('(');
                 sb.Append(propertyName);
-                sb.Append(' ').Append(sqlOperator).Append(' ');
+                sb.Append(' ').Append(this.WhereOperatorAsText(sqlCompare)).Append(' ');
                 sb.Append($"'{value}'");
                 sb.Append(')');
+            }
+
+            return this;
+        }
+
+        public ISQLGenerator<TEntity> OrWhere(SQLComparison sqlCompare, object value)
+        {
+            const string WHERE = "WHERE";
+
+            if (sb.ToString().Contains(WHERE, StringComparison.OrdinalIgnoreCase) == true)
+            {
+                int wherePos = sb.ToString().IndexOf(WHERE) + (WHERE.Length + 1);
+
+                sb.Insert(wherePos, '(');
+                sb.Append(' ').Append('\n').Append("OR").Append(' ');
+                sb.Append('(');
+                sb.Append(this.PropertyNameWhere);
+                sb.Append(' ').Append(this.WhereOperatorAsText(sqlCompare)).Append(' ');
+                sb.Append($"'{value}'");
+                sb.Append(')');
+                sb.Append(')');
+            }
+
+            return this;
+        }
+
+        public ISQLGenerator<TEntity> OrderBy(Expression<Func<TEntity, object>> expressions, SQLSorting sorting = SQLSorting.Ascending)
+        {
+            const string FROMTAB = "FROM";
+            const string ORDERBY = "ORDER BY";
+            string propertyName = ExpressionPropertyName.For<TEntity>(expressions);
+
+            if (sb.ToString().Contains(FROMTAB, StringComparison.OrdinalIgnoreCase) == true)
+            {
+                sb.Append(' ').Append('\n').Append(ORDERBY).Append(' ');
+                sb.Append('\n').Append(propertyName).Append(' ').Append(this.SortingAsText(sorting));
+            }
+
+            return this;
+        }
+
+        public ISQLGenerator<TEntity> AndOrderBy(Expression<Func<TEntity, object>> expressions, SQLSorting sorting = SQLSorting.Ascending)
+        {
+            const string FROMTAB = "FROM";
+            const string ORDERBY = "ORDER BY";
+            string propertyName = ExpressionPropertyName.For<TEntity>(expressions);
+
+            if (sb.ToString().Contains(FROMTAB, StringComparison.OrdinalIgnoreCase) == true && sb.ToString().Contains(ORDERBY, StringComparison.OrdinalIgnoreCase) == true)
+            {
+                sb.Append(',').Append('\n').Append(propertyName).Append(' ').Append(this.SortingAsText(sorting));
             }
 
             return this;
@@ -337,6 +402,82 @@ namespace Console.Expressions
                 throw new Exception("Unable to parse.");
             }
         }
+
+        private string SortingAsText(SQLSorting sqlSorting)
+        {
+            string result = string.Empty;
+
+            if (sqlSorting == SQLSorting.Ascending)
+            {
+                result = "ASC";
+            }
+            else if (sqlSorting == SQLSorting.Descending)
+            {
+                result = "DESC";
+            }
+            else
+            {
+                result = "ASC";
+            }
+
+            return result;
+        }
+
+        private string WhereOperatorAsText(SQLComparison sqlCompare)
+        {
+            string result = string.Empty;
+
+            if (sqlCompare == SQLComparison.None)
+            {
+                result = string.Empty;
+            }
+            else if (sqlCompare == SQLComparison.Equals)
+            {
+                result = " = ";
+            }
+            else if (sqlCompare == SQLComparison.NotEquals)
+            {
+                result = " <> ";
+            }
+            else if (sqlCompare == SQLComparison.GreaterOrEquals)
+            {
+                result = " >= ";
+            }
+            else if (sqlCompare == SQLComparison.GreaterThan)
+            {
+                result = " > ";
+            }
+            else if (sqlCompare == SQLComparison.LessOrEquals)
+            {
+                result = " <= ";
+            }
+            else if (sqlCompare == SQLComparison.GreaterThan)
+            {
+                result = " < ";
+            }
+            else if (sqlCompare == SQLComparison.In)
+            {
+                result = " IN(@) ";
+            }
+            else if (sqlCompare == SQLComparison.Like)
+            {
+                result = " LIKE ";
+            }
+            else if (sqlCompare == SQLComparison.NotLike)
+            {
+                result = " NOT LIKE ";
+            }
+            else if (sqlCompare == SQLComparison.IsNull)
+            {
+                result = " IS NULL ";
+            }
+            else if (sqlCompare == SQLComparison.IsNotNull)
+            {
+                result = " IS NOT NULL";
+            }
+
+            return result;
+        }
     }
 
     public enum SelectOperator : int
@@ -347,5 +488,7 @@ namespace Console.Expressions
         Count = 1,
         [Description("Limit Anzahl")]
         Limit = 2,
+        [Description("SQL Anweisung")]
+        Direct = 3,
     }
 }

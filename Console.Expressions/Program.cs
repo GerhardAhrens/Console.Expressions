@@ -11,6 +11,9 @@
 // <summary>
 // Konsolen Applikation zum Test des SQLGenerator
 // </summary>
+// <Link>
+// https://www.sqlitetutorial.net/
+// </Link>
 //-----------------------------------------------------------------------
 
 namespace Console.Expressions
@@ -30,8 +33,11 @@ namespace Console.Expressions
                 Console.WriteLine("1. Create Tabele");
                 Console.WriteLine("2. Insert");
                 Console.WriteLine("3. Select");
-                Console.WriteLine("4. Select Where");
-                Console.WriteLine("5. Select Limit, Count");
+                Console.WriteLine("4. Select Where And");
+                Console.WriteLine("5. Select Where Or");
+                Console.WriteLine("6. Select Limit, Count");
+                Console.WriteLine("7. Select Order by");
+                Console.WriteLine("8. Select Direct SQL");
                 Console.WriteLine("X. Beenden");
 
                 Console.WriteLine("Wählen Sie einen Menüpunkt oder 'x' für beenden");
@@ -61,6 +67,18 @@ namespace Console.Expressions
                     else if (key == ConsoleKey.D5)
                     {
                         MenuPoint5();
+                    }
+                    else if (key == ConsoleKey.D6)
+                    {
+                        MenuPoint6();
+                    }
+                    else if (key == ConsoleKey.D7)
+                    {
+                        MenuPoint7();
+                    }
+                    else if (key == ConsoleKey.D8)
+                    {
+                        MenuPoint8();
                     }
                 }
             }
@@ -119,7 +137,7 @@ namespace Console.Expressions
             Console.Clear();
 
             SQLGenerator<Contact> cr = new SQLGenerator<Contact>(null);
-            string result = cr.Select().Where(x => x.Age, "=", 64).AndWhere(w => w.Name, "=", "Gerhard").ToSql();
+            string result = cr.Select().Where(x => x.Age, SQLComparison.Equals, 64).AndWhere(w => w.Name, SQLComparison.Equals, "Gerhard").ToSql();
 
             Console.Write(result);
             Console.Write('\n');
@@ -130,6 +148,21 @@ namespace Console.Expressions
         }
 
         private static void MenuPoint5()
+        {
+            Console.Clear();
+
+            SQLGenerator<Contact> cr = new SQLGenerator<Contact>(null);
+            string result = cr.Select().Where(x => x.Age, SQLComparison.Equals, 64).OrWhere(SQLComparison.Equals, 2).ToSql();
+
+            Console.Write(result);
+            Console.Write('\n');
+            Console.Write('\n');
+
+            Console.WriteLine("Menüpunkt 2, eine Taste drücken für zurück!");
+            Console.ReadKey();
+        }
+
+        private static void MenuPoint6()
         {
             Console.Clear();
 
@@ -145,6 +178,30 @@ namespace Console.Expressions
             Console.Write($"Select Limit:{resultLimit}");
             Console.Write('\n');
             Console.Write('\n');
+
+            Console.WriteLine("Menüpunkt 2, eine Taste drücken für zurück!");
+            Console.ReadKey();
+        }
+
+        private static void MenuPoint7()
+        {
+            Console.Clear();
+
+            SQLGenerator<Contact> cr = new SQLGenerator<Contact>(null);
+            string resultOrderBy = cr.Select().OrderBy(x => x.Age).ToSql();
+
+            resultOrderBy = cr.Select().OrderBy(x => x.Age).AndOrderBy(y => y.Name, SQLSorting.Descending).ToSql();
+
+            Console.WriteLine("Menüpunkt 2, eine Taste drücken für zurück!");
+            Console.ReadKey();
+        }
+
+        private static void MenuPoint8()
+        {
+            Console.Clear();
+
+            SQLGenerator<Contact> cr = new SQLGenerator<Contact>(null);
+            string resultOrderBy = cr.Select(SelectOperator.Direct,"").ToSql();
 
             Console.WriteLine("Menüpunkt 2, eine Taste drücken für zurück!");
             Console.ReadKey();
