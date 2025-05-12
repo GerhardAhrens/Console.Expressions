@@ -16,9 +16,11 @@
 namespace Console.Expressions
 {
     using System;
+    using System.ComponentModel;
     using System.Linq.Expressions;
     using System.Reflection;
     using System.Text;
+    using System.Text.RegularExpressions;
 
     public class SQLGenerator<TEntity> : ISQLGenerator<TEntity>, IDisposable
     {
@@ -123,30 +125,90 @@ namespace Console.Expressions
 
         public ISQLGenerator<TEntity> Insert()
         {
+            string tableName = this.DataTableAttributes();
+
             sb.Clear();
 
             PropertyInfo[] propInfos = typeof(TEntity).GetProperties(BindingFlags.Public | BindingFlags.Instance);
-            sb.Append($"INSERT INTO {typeof(TEntity).Name}").Append(' ');
+            sb.Append($"INSERT INTO {tableName}").Append(' ').Append('\n');
             sb.Append('(');
             sb.Append(string.Join(", ", propInfos.Select(s => s.Name)));
             sb.Append(')').Append(' ');
             sb.Append('\n').Append("VALUES").Append('\n');
             sb.Append(' ').Append('(');
-            sb.Append(string.Join(", ", propInfos.Select(s => $"'{s.GetValue(this.Entity)}'")));
+            sb.Append(string.Join(", ", propInfos.Select(pi => $"'{this.InsertHelper(pi)}'")));
             sb.Append(')');
 
             return this;
         }
 
-        public ISQLGenerator<TEntity> Select()
+        private object InsertHelper(PropertyInfo propertyInfo)
         {
-            sb.Clear();
+            object value = null;
 
+            if (propertyInfo.PropertyType == typeof(string))
+            {
+                value = propertyInfo.GetValue(this.Entity).ToString();
+            }
+            else if (propertyInfo.PropertyType == typeof(int))
+            {
+                value = propertyInfo.GetValue(this.Entity).ToString();
+            }
+            else if (propertyInfo.PropertyType == typeof(DateTime))
+            {
+                value = Convert.ToDateTime(propertyInfo.GetValue(this.Entity)).ToString("yyyy-MM-dd HH:mm:ss");
+            }
+            else if (propertyInfo.PropertyType == typeof(bool))
+            {
+                if (Convert.ToBoolean(propertyInfo.GetValue(this.Entity)) == true)
+                {
+                    value = 1.ToString();
+                }
+                else
+                {
+                    value = 0.ToString();
+                }
+            }
+            else if (propertyInfo.PropertyType == typeof(Guid))
+            {
+                value = propertyInfo.GetValue(this.Entity).ToString();
+            }
+
+            return value;
+        }
+
+        public ISQLGenerator<TEntity> Select(SelectOperator selectOperator = SelectOperator.All, int limit = 0)
+        {
+            string tableName = this.DataTableAttributes();
             PropertyInfo[] propInfos = typeof(TEntity).GetProperties(BindingFlags.Public | BindingFlags.Instance);
-            sb.Append($"SELECT").Append(' ');
-            sb.Append(string.Join(", ", propInfos.Select(s => s.Name)));
-            sb.Append(' ').Append('\n').Append("FROM").Append(' ');
-            sb.Append($"{typeof(TEntity).Name}");
+
+            sb.Clear();
+            sb.Append($"SELECT").Append(' ').Append('\n');
+            if (selectOperator == SelectOperator.All)
+            {
+                sb.Append(string.Join(", ", propInfos.Select(s => s.Name)));
+                sb.Append(' ').Append('\n').Append("FROM").Append(' ');
+                sb.Append($"{tableName}");
+            }
+            else if (selectOperator == SelectOperator.Count)
+            {
+                sb.Append("COUNT(*)").Append(' ').Append('\n');
+                sb.Append("FROM").Append(' ');
+                sb.Append($"{tableName}");
+            }
+            else if (selectOperator == SelectOperator.Limit && limit > 0)
+            {
+                sb.Append(string.Join(", ", propInfos.Select(s => s.Name)));
+                sb.Append(' ').Append('\n').Append("FROM").Append(' ');
+                sb.Append($"{tableName}").Append('\n');
+                sb.Append($"LIMIT {limit}");
+            }
+            else
+            {
+                sb.Append(string.Join(", ", propInfos.Select(s => s.Name)));
+                sb.Append(' ').Append('\n').Append("FROM").Append(' ');
+                sb.Append($"{tableName}");
+            }
 
             return this;
         }
@@ -254,5 +316,36 @@ namespace Console.Expressions
 
             return obj;
         }
+
+        private DateTime ConvertToDateTime(string str)
+        {
+            string pattern = @"(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})\.(\d{3})";
+            if (Regex.IsMatch(str, pattern) == true)
+            {
+                Match match = Regex.Match(str, pattern);
+                int year = Convert.ToInt32(match.Groups[1].Value);
+                int month = Convert.ToInt32(match.Groups[2].Value);
+                int day = Convert.ToInt32(match.Groups[3].Value);
+                int hour = Convert.ToInt32(match.Groups[4].Value);
+                int minute = Convert.ToInt32(match.Groups[5].Value);
+                int second = Convert.ToInt32(match.Groups[6].Value);
+                int millisecond = Convert.ToInt32(match.Groups[7].Value);
+                return new DateTime(year, month, day, hour, minute, second, millisecond);
+            }
+            else
+            {
+                throw new Exception("Unable to parse.");
+            }
+        }
+    }
+
+    public enum SelectOperator : int
+    {
+        [Description("Alle Datensätze")]
+        All = 0,
+        [Description("Count Anzahl")]
+        Count = 1,
+        [Description("Limit Anzahl")]
+        Limit = 2,
     }
 }

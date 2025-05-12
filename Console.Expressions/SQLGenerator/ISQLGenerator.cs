@@ -22,7 +22,7 @@ namespace Console.Expressions
     {
         ISQLGenerator<TEntity> CreateTable();
         ISQLGenerator<TEntity> Insert();
-        ISQLGenerator<TEntity> Select();
+        ISQLGenerator<TEntity> Select(SelectOperator selectOperator = SelectOperator.All, int limit = 0);
 
         ISQLGenerator<TEntity> Where(Expression<Func<TEntity, object>> expressions, string sqlOperator, object value);
         ISQLGenerator<TEntity> AndWhere(Expression<Func<TEntity, object>> expressions, string sqlOperator, object value);
