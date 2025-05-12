@@ -17,6 +17,7 @@ namespace Console.Expressions
 {
     using System;
     using System.ComponentModel;
+    using System.Globalization;
     using System.Linq.Expressions;
     using System.Reflection;
     using System.Text;
@@ -40,6 +41,8 @@ namespace Console.Expressions
         public TEntity Entity { get; private set; }
 
         private string PropertyNameWhere { get; set; }
+
+        private AddBracket AddBracket { get; set; }
 
         public ISQLGenerator<TEntity> CreateTable()
         {
@@ -215,7 +218,7 @@ namespace Console.Expressions
             return this;
         }
 
-        public ISQLGenerator<TEntity> Select(SelectOperator selectOperator, string sqlText = "")
+        public ISQLGenerator<TEntity> Select(SelectOperator selectOperator, string sqlText)
         {
             string tableName = this.DataTableAttributes();
             sb.Clear();
@@ -240,7 +243,7 @@ namespace Console.Expressions
             sb.Append('(');
             sb.Append(this.PropertyNameWhere);
             sb.Append(' ').Append(this.WhereOperatorAsText(sqlCompare)).Append(' ');
-            sb.Append($"'{value}'");
+            sb.Append($"{this.ValueAsText(value)}");
             sb.Append(')');
 
             return this;
@@ -248,16 +251,45 @@ namespace Console.Expressions
 
         public ISQLGenerator<TEntity> AndWhere(Expression<Func<TEntity, object>> expressions, SQLComparison sqlCompare, object value)
         {
+            const string WHERE = "WHERE";
+            this.AddBracket = AddBracket.None;
             string propertyName = ExpressionPropertyName.For<TEntity>(expressions);
 
-            if (sb.ToString().Contains("WHERE", StringComparison.OrdinalIgnoreCase) == true)
+            if (sb.ToString().Contains(WHERE, StringComparison.OrdinalIgnoreCase) == true)
             {
+                int wherePos = sb.ToString().LastIndexOf(WHERE) + (WHERE.Length + 1);
+                if (wherePos > 0)
+                {
+                    if (sb.ToString().LastIndexOf("((") == -1)
+                    {
+                        sb.Insert(wherePos, '(');
+                        this.AddBracket = AddBracket.BracketLeft;
+                    }
+                    else if (this.AddBracket == AddBracket.None)
+                    {
+                        if (sb.ToString().LastIndexOf("))") > 0)
+                        {
+                            sb.Remove(sb.ToString().LastIndexOf("))") + 1, 1);
+                        }
+                    }
+                }
+
                 sb.Append(' ').Append('\n').Append("AND").Append(' ');
                 sb.Append('(');
                 sb.Append(propertyName);
                 sb.Append(' ').Append(this.WhereOperatorAsText(sqlCompare)).Append(' ');
-                sb.Append($"'{value}'");
+                sb.Append($"{this.ValueAsText(value)}");
                 sb.Append(')');
+                if (this.AddBracket == AddBracket.BracketLeft)
+                {
+                    sb.Append(')');
+                    this.AddBracket = AddBracket.None;
+                }
+                else if (this.AddBracket == AddBracket.None)
+                {
+                    sb.Append(')');
+                    this.AddBracket = AddBracket.None;
+                }
             }
 
             return this;
@@ -270,13 +302,16 @@ namespace Console.Expressions
             if (sb.ToString().Contains(WHERE, StringComparison.OrdinalIgnoreCase) == true)
             {
                 int wherePos = sb.ToString().IndexOf(WHERE) + (WHERE.Length + 1);
+                if (wherePos > 0)
+                {
+                    sb.Insert(wherePos, '(');
+                }
 
-                sb.Insert(wherePos, '(');
                 sb.Append(' ').Append('\n').Append("OR").Append(' ');
                 sb.Append('(');
                 sb.Append(this.PropertyNameWhere);
                 sb.Append(' ').Append(this.WhereOperatorAsText(sqlCompare)).Append(' ');
-                sb.Append($"'{value}'");
+                sb.Append($"{this.ValueAsText(value)}");
                 sb.Append(')');
                 sb.Append(')');
             }
@@ -474,6 +509,53 @@ namespace Console.Expressions
             else if (sqlCompare == SQLComparison.IsNotNull)
             {
                 result = " IS NOT NULL";
+            }
+
+            return result;
+        }
+
+        private string ValueAsText(object compareValue)
+        {
+            string result = string.Empty;
+
+            if (compareValue.GetType() == typeof(string))
+            {
+                result = $"'{compareValue.ToString()}'";
+            }
+            else if (compareValue.GetType() == typeof(Guid))
+            {
+                result = $"'{compareValue.ToString()}'";
+            }
+            else if (compareValue.GetType() == typeof(bool))
+            {
+                if ((bool)compareValue == true)
+                {
+                    result = "1";
+                }
+                else
+                {
+                    result = "0";
+                }
+            }
+            else if (compareValue.GetType() == typeof(int))
+            {
+                result = ((int)compareValue).ToString();
+            }
+            else if (compareValue.GetType() == typeof(long))
+            {
+                result = ((long)compareValue).ToString();
+            }
+            else if (compareValue.GetType() == typeof(double))
+            {
+                result = ((double)compareValue).ToString(new System.Globalization.CultureInfo("en-US"));
+            }
+            else if (compareValue.GetType() == typeof(decimal))
+            {
+                result = ((decimal)compareValue).ToString(new System.Globalization.CultureInfo("en-US"));
+            }
+            else if (compareValue.GetType() == typeof(DateTime))
+            {
+                result = $"'{Convert.ToDateTime(compareValue).ToString("yyyy-MM-dd HH:mm:ss")}'";
             }
 
             return result;

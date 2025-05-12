@@ -137,7 +137,19 @@ namespace Console.Expressions
             Console.Clear();
 
             SQLGenerator<Contact> cr = new SQLGenerator<Contact>(null);
-            string result = cr.Select().Where(x => x.Age, SQLComparison.Equals, 64).AndWhere(w => w.Name, SQLComparison.Equals, "Gerhard").ToSql();
+            string result = cr.Select().Where(x => x.Age, SQLComparison.Equals, 64).ToSql();
+
+            Console.Write(result);
+            Console.Write('\n');
+            Console.Write('\n');
+
+            result = cr.Select().Where(x => x.Age, SQLComparison.Equals, 64).AndWhere(w => w.Name, SQLComparison.Equals, "Gerhard").ToSql();
+
+            Console.Write(result);
+            Console.Write('\n');
+            Console.Write('\n');
+
+            result = cr.Select().Where(x => x.Age, SQLComparison.Equals, 64).AndWhere(w => w.Name, SQLComparison.Equals, "Gerhard").AndWhere(x => x.IsActive,SQLComparison.Equals, true).ToSql();
 
             Console.Write(result);
             Console.Write('\n');

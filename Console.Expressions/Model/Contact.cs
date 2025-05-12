@@ -54,6 +54,9 @@ namespace Console.Model
             }
         }
 
+        [TableColumn(SQLiteDataType.Boolean)]
+        public bool IsActive { get; }
+
         private int GetAge(DateTime dateOfBirth)
         {
             var today = DateTime.Today;
