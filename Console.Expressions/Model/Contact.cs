@@ -21,11 +21,14 @@ namespace Console.Model
     [DataTable("TAB_Contact")]
     public class Contact
     {
-        public Contact(string name, int age)
+        private int age = 0;
+
+        public Contact(string name, DateTime birthday)
         {
             this.Id = Guid.NewGuid();
             this.Name = name;
-            this.Age = age;
+            this.Birthday = birthday;
+            this.Age = this.GetAge(birthday);
         }
 
         [PrimaryKey]
@@ -35,7 +38,30 @@ namespace Console.Model
         [TableColumn(SQLiteDataType.Text, 50)]
         public string Name { get; }
 
+        [TableColumn(SQLiteDataType.DateTime)]
+        public DateTime Birthday { get; }
+
         [TableColumn(SQLiteDataType.Integer)]
-        public int Age { get; }
+        public int Age
+        {
+            get
+            {
+                return this.GetAge(this.Birthday);
+            }
+            private set 
+            {
+                this.age = value;
+            }
+        }
+
+        private int GetAge(DateTime dateOfBirth)
+        {
+            var today = DateTime.Today;
+
+            var a = (today.Year * 100 + today.Month) * 100 + today.Day;
+            var b = (dateOfBirth.Year * 100 + dateOfBirth.Month) * 100 + dateOfBirth.Day;
+
+            return (a - b) / 10000;
+        }
     }
 }

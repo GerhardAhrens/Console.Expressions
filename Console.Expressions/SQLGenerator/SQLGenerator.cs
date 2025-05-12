@@ -16,9 +16,11 @@
 namespace Console.Expressions
 {
     using System;
+    using System.ComponentModel;
     using System.Linq.Expressions;
     using System.Reflection;
     using System.Text;
+    using System.Text.RegularExpressions;
 
     public class SQLGenerator<TEntity> : ISQLGenerator<TEntity>, IDisposable
     {
@@ -36,6 +38,8 @@ namespace Console.Expressions
         }
 
         public TEntity Entity { get; private set; }
+
+        private string PropertyNameWhere { get; set; }
 
         public ISQLGenerator<TEntity> CreateTable()
         {
@@ -123,37 +127,110 @@ namespace Console.Expressions
 
         public ISQLGenerator<TEntity> Insert()
         {
+            string tableName = this.DataTableAttributes();
+
             sb.Clear();
 
             PropertyInfo[] propInfos = typeof(TEntity).GetProperties(BindingFlags.Public | BindingFlags.Instance);
-            sb.Append($"INSERT INTO {typeof(TEntity).Name}").Append(' ');
+            sb.Append($"INSERT INTO {tableName}").Append(' ').Append('\n');
             sb.Append('(');
             sb.Append(string.Join(", ", propInfos.Select(s => s.Name)));
             sb.Append(')').Append(' ');
             sb.Append('\n').Append("VALUES").Append('\n');
             sb.Append(' ').Append('(');
-            sb.Append(string.Join(", ", propInfos.Select(s => $"'{s.GetValue(this.Entity)}'")));
+            sb.Append(string.Join(", ", propInfos.Select(pi => $"'{this.InsertHelper(pi)}'")));
             sb.Append(')');
 
             return this;
         }
 
-        public ISQLGenerator<TEntity> Select()
+        private object InsertHelper(PropertyInfo propertyInfo)
         {
-            sb.Clear();
+            object value = null;
 
+            if (propertyInfo.PropertyType == typeof(string))
+            {
+                value = propertyInfo.GetValue(this.Entity).ToString();
+            }
+            else if (propertyInfo.PropertyType == typeof(int))
+            {
+                value = propertyInfo.GetValue(this.Entity).ToString();
+            }
+            else if (propertyInfo.PropertyType == typeof(DateTime))
+            {
+                value = Convert.ToDateTime(propertyInfo.GetValue(this.Entity)).ToString("yyyy-MM-dd HH:mm:ss");
+            }
+            else if (propertyInfo.PropertyType == typeof(bool))
+            {
+                if (Convert.ToBoolean(propertyInfo.GetValue(this.Entity)) == true)
+                {
+                    value = 1.ToString();
+                }
+                else
+                {
+                    value = 0.ToString();
+                }
+            }
+            else if (propertyInfo.PropertyType == typeof(Guid))
+            {
+                value = propertyInfo.GetValue(this.Entity).ToString();
+            }
+
+            return value;
+        }
+
+        public ISQLGenerator<TEntity> Select(SelectOperator selectOperator = SelectOperator.All, int limit = 0)
+        {
+            string tableName = this.DataTableAttributes();
             PropertyInfo[] propInfos = typeof(TEntity).GetProperties(BindingFlags.Public | BindingFlags.Instance);
-            sb.Append($"SELECT").Append(' ');
-            sb.Append(string.Join(", ", propInfos.Select(s => s.Name)));
-            sb.Append(' ').Append('\n').Append("FROM").Append(' ');
-            sb.Append($"{typeof(TEntity).Name}");
+
+            sb.Clear();
+            sb.Append($"SELECT").Append(' ').Append('\n');
+            if (selectOperator == SelectOperator.All)
+            {
+                sb.Append(string.Join(", ", propInfos.Select(s => s.Name)));
+                sb.Append(' ').Append('\n').Append("FROM").Append(' ');
+                sb.Append($"{tableName}");
+            }
+            else if (selectOperator == SelectOperator.Count)
+            {
+                sb.Append("COUNT(*)").Append(' ').Append('\n');
+                sb.Append("FROM").Append(' ');
+                sb.Append($"{tableName}");
+            }
+            else if (selectOperator == SelectOperator.Limit && limit > 0)
+            {
+                sb.Append(string.Join(", ", propInfos.Select(s => s.Name)));
+                sb.Append(' ').Append('\n').Append("FROM").Append(' ');
+                sb.Append($"{tableName}").Append('\n');
+                sb.Append($"LIMIT {limit}");
+            }
+            else
+            {
+                sb.Append(string.Join(", ", propInfos.Select(s => s.Name)));
+                sb.Append(' ').Append('\n').Append("FROM").Append(' ');
+                sb.Append($"{tableName}");
+            }
 
             return this;
         }
 
-        public ISQLGenerator<TEntity> Where(Expression<Func<TEntity, object>> expressions, string sqlOperator, object value)
+        public ISQLGenerator<TEntity> Select(SelectOperator selectOperator, string sqlText = "")
         {
-            string propertyName = ExpressionPropertyName.For<TEntity>(expressions);
+            string tableName = this.DataTableAttributes();
+            sb.Clear();
+
+            if (selectOperator == SelectOperator.Direct)
+            {
+                sb.Append(sqlText);
+            }
+
+            return this;
+        }
+
+        public ISQLGenerator<TEntity> Where(Expression<Func<TEntity, object>> expressions, SQLComparison sqlCompare, object value)
+        {
+            this.PropertyNameWhere = ExpressionPropertyName.For<TEntity>(expressions);
 
             if (sb.ToString().Contains("WHERE", StringComparison.OrdinalIgnoreCase) == false)
             {
@@ -161,15 +238,15 @@ namespace Console.Expressions
             }
 
             sb.Append('(');
-            sb.Append(propertyName);
-            sb.Append(' ').Append(sqlOperator).Append(' ');
+            sb.Append(this.PropertyNameWhere);
+            sb.Append(' ').Append(this.WhereOperatorAsText(sqlCompare)).Append(' ');
             sb.Append($"'{value}'");
             sb.Append(')');
 
             return this;
         }
 
-        public ISQLGenerator<TEntity> AndWhere(Expression<Func<TEntity, object>> expressions, string sqlOperator, object value)
+        public ISQLGenerator<TEntity> AndWhere(Expression<Func<TEntity, object>> expressions, SQLComparison sqlCompare, object value)
         {
             string propertyName = ExpressionPropertyName.For<TEntity>(expressions);
 
@@ -178,9 +255,59 @@ namespace Console.Expressions
                 sb.Append(' ').Append('\n').Append("AND").Append(' ');
                 sb.Append('(');
                 sb.Append(propertyName);
-                sb.Append(' ').Append(sqlOperator).Append(' ');
+                sb.Append(' ').Append(this.WhereOperatorAsText(sqlCompare)).Append(' ');
                 sb.Append($"'{value}'");
                 sb.Append(')');
+            }
+
+            return this;
+        }
+
+        public ISQLGenerator<TEntity> OrWhere(SQLComparison sqlCompare, object value)
+        {
+            const string WHERE = "WHERE";
+
+            if (sb.ToString().Contains(WHERE, StringComparison.OrdinalIgnoreCase) == true)
+            {
+                int wherePos = sb.ToString().IndexOf(WHERE) + (WHERE.Length + 1);
+
+                sb.Insert(wherePos, '(');
+                sb.Append(' ').Append('\n').Append("OR").Append(' ');
+                sb.Append('(');
+                sb.Append(this.PropertyNameWhere);
+                sb.Append(' ').Append(this.WhereOperatorAsText(sqlCompare)).Append(' ');
+                sb.Append($"'{value}'");
+                sb.Append(')');
+                sb.Append(')');
+            }
+
+            return this;
+        }
+
+        public ISQLGenerator<TEntity> OrderBy(Expression<Func<TEntity, object>> expressions, SQLSorting sorting = SQLSorting.Ascending)
+        {
+            const string FROMTAB = "FROM";
+            const string ORDERBY = "ORDER BY";
+            string propertyName = ExpressionPropertyName.For<TEntity>(expressions);
+
+            if (sb.ToString().Contains(FROMTAB, StringComparison.OrdinalIgnoreCase) == true)
+            {
+                sb.Append(' ').Append('\n').Append(ORDERBY).Append(' ');
+                sb.Append('\n').Append(propertyName).Append(' ').Append(this.SortingAsText(sorting));
+            }
+
+            return this;
+        }
+
+        public ISQLGenerator<TEntity> AndOrderBy(Expression<Func<TEntity, object>> expressions, SQLSorting sorting = SQLSorting.Ascending)
+        {
+            const string FROMTAB = "FROM";
+            const string ORDERBY = "ORDER BY";
+            string propertyName = ExpressionPropertyName.For<TEntity>(expressions);
+
+            if (sb.ToString().Contains(FROMTAB, StringComparison.OrdinalIgnoreCase) == true && sb.ToString().Contains(ORDERBY, StringComparison.OrdinalIgnoreCase) == true)
+            {
+                sb.Append(',').Append('\n').Append(propertyName).Append(' ').Append(this.SortingAsText(sorting));
             }
 
             return this;
@@ -254,5 +381,114 @@ namespace Console.Expressions
 
             return obj;
         }
+
+        private DateTime ConvertToDateTime(string str)
+        {
+            string pattern = @"(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})\.(\d{3})";
+            if (Regex.IsMatch(str, pattern) == true)
+            {
+                Match match = Regex.Match(str, pattern);
+                int year = Convert.ToInt32(match.Groups[1].Value);
+                int month = Convert.ToInt32(match.Groups[2].Value);
+                int day = Convert.ToInt32(match.Groups[3].Value);
+                int hour = Convert.ToInt32(match.Groups[4].Value);
+                int minute = Convert.ToInt32(match.Groups[5].Value);
+                int second = Convert.ToInt32(match.Groups[6].Value);
+                int millisecond = Convert.ToInt32(match.Groups[7].Value);
+                return new DateTime(year, month, day, hour, minute, second, millisecond);
+            }
+            else
+            {
+                throw new Exception("Unable to parse.");
+            }
+        }
+
+        private string SortingAsText(SQLSorting sqlSorting)
+        {
+            string result = string.Empty;
+
+            if (sqlSorting == SQLSorting.Ascending)
+            {
+                result = "ASC";
+            }
+            else if (sqlSorting == SQLSorting.Descending)
+            {
+                result = "DESC";
+            }
+            else
+            {
+                result = "ASC";
+            }
+
+            return result;
+        }
+
+        private string WhereOperatorAsText(SQLComparison sqlCompare)
+        {
+            string result = string.Empty;
+
+            if (sqlCompare == SQLComparison.None)
+            {
+                result = string.Empty;
+            }
+            else if (sqlCompare == SQLComparison.Equals)
+            {
+                result = " = ";
+            }
+            else if (sqlCompare == SQLComparison.NotEquals)
+            {
+                result = " <> ";
+            }
+            else if (sqlCompare == SQLComparison.GreaterOrEquals)
+            {
+                result = " >= ";
+            }
+            else if (sqlCompare == SQLComparison.GreaterThan)
+            {
+                result = " > ";
+            }
+            else if (sqlCompare == SQLComparison.LessOrEquals)
+            {
+                result = " <= ";
+            }
+            else if (sqlCompare == SQLComparison.GreaterThan)
+            {
+                result = " < ";
+            }
+            else if (sqlCompare == SQLComparison.In)
+            {
+                result = " IN(@) ";
+            }
+            else if (sqlCompare == SQLComparison.Like)
+            {
+                result = " LIKE ";
+            }
+            else if (sqlCompare == SQLComparison.NotLike)
+            {
+                result = " NOT LIKE ";
+            }
+            else if (sqlCompare == SQLComparison.IsNull)
+            {
+                result = " IS NULL ";
+            }
+            else if (sqlCompare == SQLComparison.IsNotNull)
+            {
+                result = " IS NOT NULL";
+            }
+
+            return result;
+        }
+    }
+
+    public enum SelectOperator : int
+    {
+        [Description("Alle Datensätze")]
+        All = 0,
+        [Description("Count Anzahl")]
+        Count = 1,
+        [Description("Limit Anzahl")]
+        Limit = 2,
+        [Description("SQL Anweisung")]
+        Direct = 3,
     }
 }
