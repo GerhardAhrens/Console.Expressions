@@ -76,3 +76,29 @@ private List<string> CustomerAttributesPK()
     return obj;
 }
 ```
+
+## Arbeiten mit Expressions
+### Erstellen Expressions
+
+Erstellen von Expression und Verwenden im Beispiel einer Update-Anweisung.
+
+```csharp
+public ISQLGenerator<TEntity> Update(params Expression<Func<TEntity, object>>[] expressions)
+{
+   ...
+   foreach (var item in expressions)
+   {
+      string propertyName = ExpressionPropertyName.For<TEntity>(item);
+      object propertyValue = typeof(TEntity).GetProperty(propertyName).GetValue(this.Entity);
+   }
+   ...
+}
+```
+
+```csharp
+Contact contact = new Contact("Gerhard-Maus", new DateTime(1960, 6, 28), 33.66M);
+contact.Id = new Guid("6599e87d-0d4a-4548-be38-2aef47483118");
+
+SQLGenerator<Contact> cr = new SQLGenerator<Contact>(contact);
+string result = cr.Update(x => x.Name).Where(w => w.Id, SQLComparison.Equals, "6599e87d-0d4a-4548-be38-2aef47483118").ToSql();
+```
