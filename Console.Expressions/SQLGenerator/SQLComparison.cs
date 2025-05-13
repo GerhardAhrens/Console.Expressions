@@ -28,6 +28,7 @@ namespace Console.Expressions
         LessThan,
         LessOrEquals,
         In,
+        NotIn,
         IsNull,
         IsNotNull,
         Sql,

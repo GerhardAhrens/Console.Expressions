@@ -25,61 +25,88 @@ namespace Console.Expressions
 
     public partial class Program
     {
+        private static List<ConsoleKey> inputKeys = new List<ConsoleKey>();
+
         private static void Main(string[] args)
         {
+
             do
             {
-                Console.Clear();
-                Console.WriteLine("1. Create Tabele");
-                Console.WriteLine("2. Insert");
-                Console.WriteLine("3. Select");
-                Console.WriteLine("4. Select Where And");
-                Console.WriteLine("5. Select Where Or");
-                Console.WriteLine("6. Select Limit, Count");
-                Console.WriteLine("7. Select Order by");
-                Console.WriteLine("8. Select Direct SQL");
-                Console.WriteLine("X. Beenden");
+                ConsoleMenu.Add("1", "Create Tabele");
+                ConsoleMenu.Add("2", "Insert");
+                ConsoleMenu.Add("A1", "Select");
+                ConsoleMenu.Add("A2", "Select Where And");
+                ConsoleMenu.Add("A3", "Select Where Or");
+                ConsoleMenu.Add("A4", "Select Limit, Count");
+                ConsoleMenu.Add("A5", "Select Order By");
+                ConsoleMenu.Add("A6", "Select Direct SQL");
+                ConsoleMenu.Add("B1", "Select Between / Not Between");
+                ConsoleMenu.Add("B2", "Select In / Not In");
+                ConsoleMenu.Add("B3", "Select Like / Not Like / Glob");
+                ConsoleMenu.Add("B4", "Select IsNull / IsNotNull");
+                ConsoleMenu.Add("C1", "Select Group By");
+                ConsoleMenu.Add("D1", "Update");
+                string selectKey = ConsoleMenu.SelectKey();
 
-                Console.WriteLine("Wählen Sie einen Menüpunkt oder 'x' für beenden");
-                ConsoleKey key = Console.ReadKey(true).Key;
-                if (key == ConsoleKey.X)
+                if (selectKey == "X")
                 {
                     Environment.Exit(0);
                 }
-                else
+                else if (selectKey == "1")
                 {
-                    if (key == ConsoleKey.D1)
-                    {
-                        MenuPoint1();
-                    }
-                    else if (key == ConsoleKey.D2)
-                    {
-                        MenuPoint2();
-                    }
-                    else if (key == ConsoleKey.D3)
-                    {
-                        MenuPoint3();
-                    }
-                    else if (key == ConsoleKey.D4)
-                    {
-                        MenuPoint4();
-                    }
-                    else if (key == ConsoleKey.D5)
-                    {
-                        MenuPoint5();
-                    }
-                    else if (key == ConsoleKey.D6)
-                    {
-                        MenuPoint6();
-                    }
-                    else if (key == ConsoleKey.D7)
-                    {
-                        MenuPoint7();
-                    }
-                    else if (key == ConsoleKey.D8)
-                    {
-                        MenuPoint8();
-                    }
+                    MenuPoint1();
+                }
+                else if (selectKey == "2")
+                {
+                    MenuPoint2();
+                }
+                else if (selectKey == "A1")
+                {
+                    MenuPointA1();
+                }
+                else if (selectKey == "A2")
+                {
+                    MenuPointA2();
+                }
+                else if (selectKey == "A3")
+                {
+                    MenuPointA3();
+                }
+                else if (selectKey == "A4")
+                {
+                    MenuPointA4();
+                }
+                else if (selectKey == "A5")
+                {
+                    MenuPointA5();
+                }
+                else if (selectKey == "A6")
+                {
+                    MenuPointA6();
+                }
+                else if (selectKey == "B1")
+                {
+                    MenuPointA7();
+                }
+                else if (selectKey == "B2")
+                {
+                    MenuPointA8();
+                }
+                else if (selectKey == "B3")
+                {
+                    MenuPointA9();
+                }
+                else if (selectKey == "B4")
+                {
+                    MenuPointB4();
+                }
+                else if (selectKey == "C1")
+                {
+                    MenuPointC1();
+                }
+                else if (selectKey == "D1")
+                {
+                    MenuPointD1();
                 }
             }
             while (true);
@@ -96,15 +123,14 @@ namespace Console.Expressions
             Console.Write('\n');
             Console.Write('\n');
 
-            Console.WriteLine("Menüpunkt 1, eine Taste drücken für zurück!");
-            Console.ReadKey();
+            ConsoleMenu.Wait();
         }
 
         private static void MenuPoint2()
         {
             Console.Clear();
 
-            Contact contact = new Contact("Gerhard", new DateTime(1960,6,28));
+            Contact contact = new Contact("Gerhard", new DateTime(1960,6,28),22.65M);
 
             SQLGenerator<Contact> cr = new SQLGenerator<Contact>(contact);
             string result = cr.Insert().ToSql();
@@ -113,11 +139,10 @@ namespace Console.Expressions
             Console.Write('\n');
             Console.Write('\n');
 
-            Console.WriteLine("Menüpunkt 1, eine Taste drücken für zurück!");
-            Console.ReadKey();
+            ConsoleMenu.Wait();
         }
 
-        private static void MenuPoint3()
+        private static void MenuPointA1()
         {
             Console.Clear();
 
@@ -128,11 +153,22 @@ namespace Console.Expressions
             Console.Write('\n');
             Console.Write('\n');
 
-            Console.WriteLine("Menüpunkt 2, eine Taste drücken für zurück!");
-            Console.ReadKey();
+            result = cr.Select(x => x.Name, x => x.Age).ToSql();
+
+            Console.Write(result);
+            Console.Write('\n');
+            Console.Write('\n');
+
+            result = cr.Select(x => x.Name).Distinct().ToSql();
+
+            Console.Write(result);
+            Console.Write('\n');
+            Console.Write('\n');
+
+            ConsoleMenu.Wait();
         }
 
-        private static void MenuPoint4()
+        private static void MenuPointA2()
         {
             Console.Clear();
 
@@ -143,80 +179,280 @@ namespace Console.Expressions
             Console.Write('\n');
             Console.Write('\n');
 
-            result = cr.Select().Where(x => x.Age, SQLComparison.Equals, 64).AndWhere(w => w.Name, SQLComparison.Equals, "Gerhard").ToSql();
+            result = cr.Select().Where(x => x.Age, SQLComparison.Equals, 64).AddWhereAnd(w => w.Name, SQLComparison.Equals, "Gerhard").ToSql();
 
             Console.Write(result);
             Console.Write('\n');
             Console.Write('\n');
 
-            result = cr.Select().Where(x => x.Age, SQLComparison.Equals, 64).AndWhere(w => w.Name, SQLComparison.Equals, "Gerhard").AndWhere(x => x.IsActive,SQLComparison.Equals, true).ToSql();
+            result = cr.Select().Where(x => x.Age, SQLComparison.GreaterThan, 60).AddWhereAnd(w => w.IsActive, SQLComparison.IsNull).ToSql();
 
             Console.Write(result);
             Console.Write('\n');
             Console.Write('\n');
 
-            Console.WriteLine("Menüpunkt 2, eine Taste drücken für zurück!");
-            Console.ReadKey();
+            result = cr.Select().Where(x => x.Age, SQLComparison.In, "91,64").ToSql();
+
+            Console.Write(result);
+            Console.Write('\n');
+            Console.Write('\n');
+
+            result = cr.Select().Where(x => x.Age, SQLComparison.NotIn, "91,64").ToSql();
+
+            Console.Write(result);
+            Console.Write('\n');
+            Console.Write('\n');
+
+            result = cr.Select().Where(x => x.Age, SQLComparison.Equals, 64).AddWhereAnd(w => w.Name, SQLComparison.Equals, "Gerhard").AddWhereAnd(x => x.IsActive,SQLComparison.Equals, true).ToSql();
+
+            Console.Write(result);
+            Console.Write('\n');
+            Console.Write('\n');
+
+            result = cr.Select().Where(x => x.Name, SQLComparison.Like, "ger%").ToSql();
+
+            Console.Write(result);
+            Console.Write('\n');
+            Console.Write('\n');
+
+            ConsoleMenu.Wait();
         }
 
-        private static void MenuPoint5()
+        private static void MenuPointA3()
         {
             Console.Clear();
 
             SQLGenerator<Contact> cr = new SQLGenerator<Contact>(null);
-            string result = cr.Select().Where(x => x.Age, SQLComparison.Equals, 64).OrWhere(SQLComparison.Equals, 2).ToSql();
+            string result = cr.Select().Where(x => x.Age, SQLComparison.Equals, 64).AddWhereOr(SQLComparison.Equals, 2).ToSql();
 
             Console.Write(result);
             Console.Write('\n');
             Console.Write('\n');
 
-            Console.WriteLine("Menüpunkt 2, eine Taste drücken für zurück!");
-            Console.ReadKey();
+            result = cr.Select().Where(x => x.Age, SQLComparison.Equals, 64).AddWhereOr(SQLComparison.Equals, 2).AddWhereOr(SQLComparison.Equals,5).ToSql();
+
+            Console.Write(result);
+            Console.Write('\n');
+            Console.Write('\n');
+
+            ConsoleMenu.Wait();
         }
 
-        private static void MenuPoint6()
+        private static void MenuPointA4()
         {
             Console.Clear();
 
             SQLGenerator<Contact> cr = new SQLGenerator<Contact>(null);
-            string resultCount = cr.Select(SelectOperator.Count).ToSql();
+            string result = cr.Select(SelectOperator.Count).ToSql();
 
-            Console.Write($"Select Count:{resultCount}");
+            Console.Write(result);
             Console.Write('\n');
             Console.Write('\n');
 
-            string resultLimit = cr.Select(SelectOperator.Limit,2).ToSql();
+            result = cr.Select().Take(2).ToSql();
 
-            Console.Write($"Select Limit:{resultLimit}");
+            Console.Write(result);
             Console.Write('\n');
             Console.Write('\n');
 
-            Console.WriteLine("Menüpunkt 2, eine Taste drücken für zurück!");
-            Console.ReadKey();
+            ConsoleMenu.Wait();
         }
 
-        private static void MenuPoint7()
+        private static void MenuPointA5()
         {
             Console.Clear();
 
             SQLGenerator<Contact> cr = new SQLGenerator<Contact>(null);
             string resultOrderBy = cr.Select().OrderBy(x => x.Age).ToSql();
+            Console.Write($"Ergebnis:{resultOrderBy}");
+            Console.Write('\n');
+            Console.Write('\n');
 
             resultOrderBy = cr.Select().OrderBy(x => x.Age).AndOrderBy(y => y.Name, SQLSorting.Descending).ToSql();
 
-            Console.WriteLine("Menüpunkt 2, eine Taste drücken für zurück!");
-            Console.ReadKey();
+            Console.Write($"Ergebnis:{resultOrderBy}");
+            Console.Write('\n');
+            Console.Write('\n');
+
+            ConsoleMenu.Wait();
         }
 
-        private static void MenuPoint8()
+        private static void MenuPointA6()
         {
             Console.Clear();
 
             SQLGenerator<Contact> cr = new SQLGenerator<Contact>(null);
-            string resultOrderBy = cr.Select(SelectOperator.Direct,"").ToSql();
+            string resultSQLDirect = cr.Select(SelectOperator.Direct,"select * from Tabelle").ToSql();
 
-            Console.WriteLine("Menüpunkt 2, eine Taste drücken für zurück!");
-            Console.ReadKey();
+            Console.Write($"Ergebnis:{resultSQLDirect}");
+            Console.Write('\n');
+            Console.Write('\n');
+
+            ConsoleMenu.Wait();
+        }
+
+        private static void MenuPointA7()
+        {
+            Console.Clear();
+
+            SQLGenerator<Contact> cr = new SQLGenerator<Contact>(null);
+            string result = cr.Select().AddBetween(x => x.Age,70,100).ToSql();
+
+            Console.Write($"{result}");
+            Console.Write('\n');
+            Console.Write('\n');
+
+            result = cr.Select().AddNotBetween(x => x.Age, 70, 100).ToSql();
+
+            Console.Write($"{result}");
+            Console.Write('\n');
+            Console.Write('\n');
+
+            result = cr.Select().AddBetween(x => x.Betrag, 23.00M, 100.00M).AddWhereAnd(x => x.IsActive,SQLComparison.Equals,true).ToSql();
+
+            Console.Write($"{result}");
+            Console.Write('\n');
+            Console.Write('\n');
+
+            result = cr.Select(SelectOperator.Direct, "select Id, Name, date(Birthday) Birthday, Age, Betrag, IsActive from tab_contact").AddBetween(x => x.Birthday, "1910-01-01", "1930-12-31").ToSql();
+
+            Console.Write($"{result}");
+            Console.Write('\n');
+            Console.Write('\n');
+
+            ConsoleMenu.Wait();
+        }
+
+        private static void MenuPointA8()
+        {
+            Console.Clear();
+
+            SQLGenerator<Contact> cr = new SQLGenerator<Contact>(null);
+            string result = cr.Select().AddIn(x => x.Age, 64, 65).ToSql();
+
+            Console.Write($"{result}");
+            Console.Write('\n');
+            Console.Write('\n');
+
+            result = cr.Select().AddNotIn(x => x.Age, 64, 65).ToSql();
+
+            Console.Write($"{result}");
+            Console.Write('\n');
+            Console.Write('\n');
+
+            result = cr.Select().AddIn(x => x.Age, 64, 65).AddWhereAnd(x => x.IsActive, SQLComparison.Equals, true).ToSql();
+
+            Console.Write($"{result}");
+            Console.Write('\n');
+            Console.Write('\n');
+
+            ConsoleMenu.Wait();
+        }
+
+        private static void MenuPointA9()
+        {
+            Console.Clear();
+
+            SQLGenerator<Contact> cr = new SQLGenerator<Contact>(null);
+            string result = cr.Select().AddLike(x => x.Name,"Ger%").ToSql();
+
+            Console.Write($"{result}");
+            Console.Write('\n');
+            Console.Write('\n');
+
+            result = cr.Select().AddNotLike(x => x.Name, "Ger%").ToSql();
+
+            Console.Write($"{result}");
+            Console.Write('\n');
+            Console.Write('\n');
+
+            result = cr.Select().AddLike(x => x.Name, "Ger%").AddWhereAnd(x => x.IsActive, SQLComparison.Equals, true).ToSql();
+
+            Console.Write($"{result}");
+            Console.Write('\n');
+            Console.Write('\n');
+
+            result = cr.Select().AddGlob(x => x.Name, "?er*").ToSql();
+
+            Console.Write($"{result}");
+            Console.Write('\n');
+            Console.Write('\n');
+
+            result = cr.Select().AddGlob(x => x.Age, "*[5-9]*").ToSql();
+
+            Console.Write($"{result}");
+            Console.Write('\n');
+            Console.Write('\n');
+
+            ConsoleMenu.Wait();
+        }
+
+        private static void MenuPointB4()
+        {
+            Console.Clear();
+
+            SQLGenerator<Contact> cr = new SQLGenerator<Contact>(null);
+            string result = cr.Select().AddIsNull(x => x.IsActive).ToSql();
+
+            Console.Write($"{result}");
+            Console.Write('\n');
+            Console.Write('\n');
+
+            result = cr.Select().AddIsNotNull(x => x.IsActive).ToSql();
+
+            Console.Write($"{result}");
+            Console.Write('\n');
+            Console.Write('\n');
+
+            result = cr.Select().AddIsNull(x => x.IsActive).AddWhereAnd(x => x.Age, SQLComparison.GreaterThan, 50).ToSql();
+
+            Console.Write($"{result}");
+            Console.Write('\n');
+            Console.Write('\n');
+
+            ConsoleMenu.Wait();
+        }
+
+        private static void MenuPointC1()
+        {
+            Console.Clear();
+
+            SQLGenerator<Contact> cr = new SQLGenerator<Contact>(null);
+            string result = cr.Select(SelectOperator.Direct, "select Name, Count(Name) from tab_contact").AddGroupBy(g => g.Name).ToSql();
+
+            Console.Write($"{result}");
+            Console.Write('\n');
+            Console.Write('\n');
+
+            result = cr.Select(SelectOperator.Direct, "select Name, age, count(id) from tab_contact").AddGroupBy(g => g.Name, g=>g.Age).ToSql();
+
+            Console.Write($"{result}");
+            Console.Write('\n');
+            Console.Write('\n');
+
+            ConsoleMenu.Wait();
+        }
+
+        private static void MenuPointD1()
+        {
+            Console.Clear();
+            Contact contact = new Contact("Gerhard-Maus", new DateTime(1960, 6, 28), 33.66M);
+            contact.Id = new Guid("6599e87d-0d4a-4548-be38-2aef47483118");
+
+            SQLGenerator<Contact> cr = new SQLGenerator<Contact>(contact);
+            string result = cr.Update().Where(w => w.Id,SQLComparison.Equals, "6599e87d-0d4a-4548-be38-2aef47483118").ToSql();
+
+            Console.Write($"{result}");
+            Console.Write('\n');
+            Console.Write('\n');
+
+            result = cr.Update(x => x.Name).Where(w => w.Id, SQLComparison.Equals, "6599e87d-0d4a-4548-be38-2aef47483118").ToSql();
+
+            Console.Write($"{result}");
+            Console.Write('\n');
+            Console.Write('\n');
+
+            ConsoleMenu.Wait();
         }
     }
 }

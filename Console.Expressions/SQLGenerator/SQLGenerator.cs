@@ -86,7 +86,7 @@ namespace Console.Expressions
                     }
                     else if (propertyInfo.PropertyType.Name.Contains("decimal", StringComparison.OrdinalIgnoreCase) == true)
                     {
-                        sb.Append($"{column.ColumnName} DECIMAL({column.Length},{column.AfterComma},").Append('\n');
+                        sb.Append($"{column.ColumnName} DECIMAL({column.Length},{column.AfterComma}),").Append('\n');
                     }
                     else if (propertyInfo.PropertyType == typeof(double))
                     {
@@ -141,7 +141,90 @@ namespace Console.Expressions
             sb.Append(')').Append(' ');
             sb.Append('\n').Append("VALUES").Append('\n');
             sb.Append(' ').Append('(');
-            sb.Append(string.Join(", ", propInfos.Select(pi => $"'{this.InsertHelper(pi)}'")));
+            sb.Append(string.Join(", ", propInfos.Select(pi => $"{this.InsertHelper(pi)}")));
+            sb.Append(')');
+
+            return this;
+        }
+
+        public ISQLGenerator<TEntity> Update()
+        {
+            string tableName = this.DataTableAttributes();
+            PropertyInfo[] propInfos = typeof(TEntity).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            List<string> keyColumns = this.CustomerAttributesPK();
+
+            sb.Clear();
+            sb.Append($"UPDATE {tableName}").Append(' ').Append('\n');
+            sb.Append($"SET").Append(' ');
+            foreach (PropertyInfo item in propInfos)
+            {
+                if (keyColumns.Contains(item.Name) == false)
+                {
+                    sb.Append(item.Name);
+                    sb.Append(" = ");
+                    sb.Append($"{this.InsertHelper(item)}");
+                    sb.Append(',');
+                }
+            }
+
+            sb.Remove(sb.ToString().Length-1, 1);
+
+            return this;
+        }
+
+        public ISQLGenerator<TEntity> Update(params Expression<Func<TEntity, object>>[] expressions)
+        {
+            string tableName = this.DataTableAttributes();
+            PropertyInfo[] propInfos = typeof(TEntity).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            List<string> keyColumns = this.CustomerAttributesPK();
+
+            sb.Clear();
+            sb.Append($"UPDATE {tableName}").Append(' ').Append('\n');
+            sb.Append($"SET").Append(' ');
+            foreach (var item in expressions)
+            {
+                string expName = ExpressionPropertyName.For<TEntity>(item);
+
+                if (keyColumns.Contains(expName) == false)
+                {
+                    object propertyValue = typeof(TEntity).GetProperty(expName).GetValue(this.Entity);
+                    sb.Append(expName);
+                    sb.Append(" = ");
+                    sb.Append($"{this.ValueAsText(propertyValue)}");
+                    sb.Append(',');
+                }
+            }
+
+            sb.Remove(sb.ToString().Length - 1, 1);
+
+            return this;
+        }
+
+        public ISQLGenerator<TEntity> Delete(params Expression<Func<TEntity, object>>[] expressions)
+        {
+            string tableName = this.DataTableAttributes();
+
+            sb.Clear();
+            sb.Append($"UPDATE {tableName}").Append(' ').Append('\n');
+            if (sb.ToString().Contains("WHERE", StringComparison.OrdinalIgnoreCase) == false)
+            {
+                sb.Append(' ').Append("WHERE").Append(' ');
+            }
+
+            sb.Append('(').Append('\n');
+
+            foreach (var item in expressions)
+            {
+                string expName = ExpressionPropertyName.For<TEntity>(item);
+                object propertyValue = typeof(TEntity).GetProperty(expName).GetValue(this.Entity);
+                sb.Append(expName);
+                sb.Append(" = ");
+                sb.Append($"{this.ValueAsText(propertyValue)}");
+                sb.Append(' ');
+                sb.Append('\n');
+                sb.Append("AND").Append(' ');
+            }
+
             sb.Append(')');
 
             return this;
@@ -153,15 +236,27 @@ namespace Console.Expressions
 
             if (propertyInfo.PropertyType == typeof(string))
             {
-                value = propertyInfo.GetValue(this.Entity).ToString();
+                value = $"'{propertyInfo.GetValue(this.Entity).ToString()}'";
             }
             else if (propertyInfo.PropertyType == typeof(int))
             {
                 value = propertyInfo.GetValue(this.Entity).ToString();
             }
+            else if (propertyInfo.PropertyType == typeof(long))
+            {
+                value = propertyInfo.GetValue(this.Entity).ToString();
+            }
+            else if (propertyInfo.PropertyType == typeof(decimal))
+            {
+                value = Convert.ToDecimal(propertyInfo.GetValue(this.Entity)).ToString(new System.Globalization.CultureInfo("en-US"));
+            }
+            else if (propertyInfo.PropertyType == typeof(double))
+            {
+                value = Convert.ToDouble(propertyInfo.GetValue(this.Entity)).ToString(new System.Globalization.CultureInfo("en-US"));
+            }
             else if (propertyInfo.PropertyType == typeof(DateTime))
             {
-                value = Convert.ToDateTime(propertyInfo.GetValue(this.Entity)).ToString("yyyy-MM-dd HH:mm:ss");
+                value = $"'{Convert.ToDateTime(propertyInfo.GetValue(this.Entity)).ToString("yyyy-MM-dd HH:mm:ss")}'";
             }
             else if (propertyInfo.PropertyType == typeof(bool))
             {
@@ -176,13 +271,26 @@ namespace Console.Expressions
             }
             else if (propertyInfo.PropertyType == typeof(Guid))
             {
-                value = propertyInfo.GetValue(this.Entity).ToString();
+                value = $"'{propertyInfo.GetValue(this.Entity).ToString()}'";
             }
 
             return value;
         }
 
-        public ISQLGenerator<TEntity> Select(SelectOperator selectOperator = SelectOperator.All, int limit = 0)
+        public ISQLGenerator<TEntity> Select(params Expression<Func<TEntity, object>>[] expressions)
+        {
+            string tableName = this.DataTableAttributes();
+
+            sb.Clear();
+            sb.Append($"SELECT").Append(' ').Append('\n');
+            sb.Append(' ').Append(string.Join(", ", expressions.Select(s => ExpressionPropertyName.For<TEntity>(s))));
+            sb.Append(' ').Append('\n').Append("FROM").Append(' ');
+            sb.Append($"{tableName}");
+
+            return this;
+        }
+
+        public ISQLGenerator<TEntity> Select(SelectOperator selectOperator = SelectOperator.All)
         {
             string tableName = this.DataTableAttributes();
             PropertyInfo[] propInfos = typeof(TEntity).GetProperties(BindingFlags.Public | BindingFlags.Instance);
@@ -200,13 +308,6 @@ namespace Console.Expressions
                 sb.Append("COUNT(*)").Append(' ').Append('\n');
                 sb.Append("FROM").Append(' ');
                 sb.Append($"{tableName}");
-            }
-            else if (selectOperator == SelectOperator.Limit && limit > 0)
-            {
-                sb.Append(string.Join(", ", propInfos.Select(s => s.Name)));
-                sb.Append(' ').Append('\n').Append("FROM").Append(' ');
-                sb.Append($"{tableName}").Append('\n');
-                sb.Append($"LIMIT {limit}");
             }
             else
             {
@@ -231,6 +332,42 @@ namespace Console.Expressions
             return this;
         }
 
+        public ISQLGenerator<TEntity> Distinct()
+        {
+            const string SELECT = "SELECT";
+            const string DISTINCT = "DISTINCT";
+
+            if (sb.ToString().Contains(SELECT, StringComparison.OrdinalIgnoreCase) == true && sb.ToString().Contains(DISTINCT, StringComparison.OrdinalIgnoreCase) == false)
+            {
+                int pos = sb.ToString().LastIndexOf(SELECT) + (SELECT.Length + 1);
+                if (pos > 0)
+                {
+                    sb.Insert(pos, DISTINCT);
+                    sb.Append(' ');
+                }
+            }
+
+            return this;
+        }
+
+        public ISQLGenerator<TEntity> Take(int limit)
+        {
+            const string SELECT = "SELECT";
+            const string LIMIT = "LIMIT";
+
+            if (sb.ToString().Contains(SELECT, StringComparison.OrdinalIgnoreCase) == true && sb.ToString().Contains(LIMIT, StringComparison.OrdinalIgnoreCase) == false)
+            {
+                int pos = sb.ToString().Length;
+                if (pos > 0)
+                {
+                    sb.Append(' ').Append($"{LIMIT} {limit}");
+                }
+            }
+
+            return this;
+        }
+
+
         public ISQLGenerator<TEntity> Where(Expression<Func<TEntity, object>> expressions, SQLComparison sqlCompare, object value)
         {
             this.PropertyNameWhere = ExpressionPropertyName.For<TEntity>(expressions);
@@ -243,13 +380,36 @@ namespace Console.Expressions
             sb.Append('(');
             sb.Append(this.PropertyNameWhere);
             sb.Append(' ').Append(this.WhereOperatorAsText(sqlCompare)).Append(' ');
-            sb.Append($"{this.ValueAsText(value)}");
+            if (value != null)
+            {
+                if (sqlCompare == SQLComparison.In)
+                {
+                    sb.Replace(this.WhereOperatorAsText(sqlCompare), $"IN({value})");
+                }
+                else if (sqlCompare == SQLComparison.NotIn)
+                {
+                    sb.Replace(this.WhereOperatorAsText(sqlCompare), $"NOT IN({value})");
+                }
+                else if (sqlCompare == SQLComparison.Like)
+                {
+                    sb.Replace(this.WhereOperatorAsText(sqlCompare), $"LIKE ('{value}')");
+                }
+                else if (sqlCompare == SQLComparison.NotLike)
+                {
+                    sb.Replace(this.WhereOperatorAsText(sqlCompare), $"NOT LIKE ('{value}')");
+                }
+                else
+                {
+                    sb.Append($"{this.ValueAsText(value)}");
+                }
+            }
+
             sb.Append(')');
 
             return this;
         }
 
-        public ISQLGenerator<TEntity> AndWhere(Expression<Func<TEntity, object>> expressions, SQLComparison sqlCompare, object value)
+        public ISQLGenerator<TEntity> AddWhereAnd(Expression<Func<TEntity, object>> expressions, SQLComparison sqlCompare, object value = null)
         {
             const string WHERE = "WHERE";
             this.AddBracket = AddBracket.None;
@@ -258,6 +418,87 @@ namespace Console.Expressions
             if (sb.ToString().Contains(WHERE, StringComparison.OrdinalIgnoreCase) == true)
             {
                 int wherePos = sb.ToString().LastIndexOf(WHERE) + (WHERE.Length + 1);
+                if (wherePos > 0)
+                {
+                    if (sb.ToString().LastIndexOf("((") == -1)
+                    {
+                        if (sb.ToString().LastIndexOf("IN(") > 0 || sb.ToString().LastIndexOf("NOT IN(") > 0)
+                        {
+                            this.AddBracket = AddBracket.None;
+                        }
+                        else
+                        {
+                            sb.Insert(wherePos, '(');
+                            this.AddBracket = AddBracket.BracketLeft;
+                        }
+
+                    }
+                    else if (this.AddBracket == AddBracket.None)
+                    {
+                        if (sb.ToString().LastIndexOf("))") > 0)
+                        {
+                            sb.Remove(sb.ToString().LastIndexOf("))") + 1, 1);
+                        }
+                    }
+                }
+
+                sb.Append(' ').Append('\n').Append("AND").Append(' ');
+                sb.Append('(');
+                sb.Append(propertyName);
+                sb.Append(' ').Append(this.WhereOperatorAsText(sqlCompare)).Append(' ');
+                if (value != null)
+                {
+                    if (sqlCompare == SQLComparison.In)
+                    {
+                        sb.Replace(this.WhereOperatorAsText(sqlCompare), $"IN({value})");
+                    }
+                    else if (sqlCompare == SQLComparison.NotIn)
+                    {
+                        sb.Replace(this.WhereOperatorAsText(sqlCompare), $"NOT IN({value})");
+                    }
+                    else if (sqlCompare == SQLComparison.Like)
+                    {
+                        sb.Replace(this.WhereOperatorAsText(sqlCompare), $"LIKE ('{value}')");
+                    }
+                    else if (sqlCompare == SQLComparison.NotLike)
+                    {
+                        sb.Replace(this.WhereOperatorAsText(sqlCompare), $"NOT LIKE ('{value}')");
+                    }
+                    else
+                    {
+                        sb.Append($"{this.ValueAsText(value)}");
+                    }
+                }
+
+                sb.Append(')');
+                if (this.AddBracket == AddBracket.BracketLeft)
+                {
+                    sb.Append(')');
+                    this.AddBracket = AddBracket.None;
+                }
+                else if (this.AddBracket == AddBracket.None)
+                {
+                    if (sb.ToString().LastIndexOf("IN(") > 0 || sb.ToString().LastIndexOf("NOT IN(") > 0)
+                    {
+                    }
+                    else
+                    {
+                        sb.Append(')');
+                        this.AddBracket = AddBracket.None;
+                    }
+                }
+            }
+
+            return this;
+        }
+
+        public ISQLGenerator<TEntity> AddWhereOr(SQLComparison sqlCompare, object value)
+        {
+            const string WHERE = "WHERE";
+
+            if (sb.ToString().Contains(WHERE, StringComparison.OrdinalIgnoreCase) == true)
+            {
+                int wherePos = sb.ToString().IndexOf(WHERE) + (WHERE.Length + 1);
                 if (wherePos > 0)
                 {
                     if (sb.ToString().LastIndexOf("((") == -1)
@@ -274,12 +515,13 @@ namespace Console.Expressions
                     }
                 }
 
-                sb.Append(' ').Append('\n').Append("AND").Append(' ');
+                sb.Append(' ').Append('\n').Append("OR").Append(' ');
                 sb.Append('(');
-                sb.Append(propertyName);
+                sb.Append(this.PropertyNameWhere);
                 sb.Append(' ').Append(this.WhereOperatorAsText(sqlCompare)).Append(' ');
                 sb.Append($"{this.ValueAsText(value)}");
                 sb.Append(')');
+
                 if (this.AddBracket == AddBracket.BracketLeft)
                 {
                     sb.Append(')');
@@ -295,26 +537,186 @@ namespace Console.Expressions
             return this;
         }
 
-        public ISQLGenerator<TEntity> OrWhere(SQLComparison sqlCompare, object value)
+        public ISQLGenerator<TEntity> AddBetween(Expression<Func<TEntity, object>> expressions, object valueLow, object valueHigh)
         {
             const string WHERE = "WHERE";
 
-            if (sb.ToString().Contains(WHERE, StringComparison.OrdinalIgnoreCase) == true)
-            {
-                int wherePos = sb.ToString().IndexOf(WHERE) + (WHERE.Length + 1);
-                if (wherePos > 0)
-                {
-                    sb.Insert(wherePos, '(');
-                }
+            this.PropertyNameWhere = ExpressionPropertyName.For<TEntity>(expressions);
 
-                sb.Append(' ').Append('\n').Append("OR").Append(' ');
-                sb.Append('(');
-                sb.Append(this.PropertyNameWhere);
-                sb.Append(' ').Append(this.WhereOperatorAsText(sqlCompare)).Append(' ');
-                sb.Append($"{this.ValueAsText(value)}");
-                sb.Append(')');
-                sb.Append(')');
+            if (sb.ToString().Contains(WHERE, StringComparison.OrdinalIgnoreCase) == false)
+            {
+                sb.Append(' ').Append('\n').Append(WHERE).Append(' ');
             }
+
+            sb.Append('(');
+            sb.Append(this.PropertyNameWhere).Append(' ');
+            sb.Append(' ').Append("BETWEEN").Append(' ');
+            sb.Append($"{this.ValueAsText(valueLow)}");
+            sb.Append(' ');
+            sb.Append("AND");
+            sb.Append(' ');
+            sb.Append($"{this.ValueAsText(valueHigh)}");
+            sb.Append(')');
+
+            return this;
+        }
+
+        public ISQLGenerator<TEntity> AddNotBetween(Expression<Func<TEntity, object>> expressions, object valueLow, object valueHigh)
+        {
+            const string WHERE = "WHERE";
+
+            this.PropertyNameWhere = ExpressionPropertyName.For<TEntity>(expressions);
+
+            if (sb.ToString().Contains(WHERE, StringComparison.OrdinalIgnoreCase) == false)
+            {
+                sb.Append(' ').Append('\n').Append(WHERE).Append(' ');
+            }
+
+            sb.Append('(');
+            sb.Append(this.PropertyNameWhere).Append(' ');
+            sb.Append(' ').Append("NOT BETWEEN").Append(' ');
+            sb.Append($"{this.ValueAsText(valueLow)}");
+            sb.Append(' ');
+            sb.Append("AND");
+            sb.Append(' ');
+            sb.Append($"{this.ValueAsText(valueHigh)}");
+            sb.Append(')');
+
+            return this;
+        }
+
+        public ISQLGenerator<TEntity> AddIn(Expression<Func<TEntity, object>> expressions, params object[] values)
+        {
+            const string WHERE = "WHERE";
+
+            this.PropertyNameWhere = ExpressionPropertyName.For<TEntity>(expressions);
+
+            if (sb.ToString().Contains(WHERE, StringComparison.OrdinalIgnoreCase) == false)
+            {
+                sb.Append(' ').Append('\n').Append(WHERE).Append(' ');
+            }
+
+            sb.Append('(');
+            sb.Append(this.PropertyNameWhere).Append(' ');
+            sb.Append(' ').Append("IN").Append('(').Append(string.Join(", ", values.Select(pi => $"{this.ValueAsText(pi)}")));
+            sb.Append(')');
+            sb.Append(')');
+
+            return this;
+        }
+
+        public ISQLGenerator<TEntity> AddNotIn(Expression<Func<TEntity, object>> expressions, params object[] values)
+        {
+            const string WHERE = "WHERE";
+
+            this.PropertyNameWhere = ExpressionPropertyName.For<TEntity>(expressions);
+
+            if (sb.ToString().Contains(WHERE, StringComparison.OrdinalIgnoreCase) == false)
+            {
+                sb.Append(' ').Append('\n').Append(WHERE).Append(' ');
+            }
+
+            sb.Append('(');
+            sb.Append(this.PropertyNameWhere).Append(' ');
+            sb.Append(' ').Append("NOT IN").Append('(').Append(' ');
+            sb.Append(string.Join(", ", values.Select(pi => $"{this.ValueAsText(pi)}")));
+            sb.Append(')');
+            sb.Append(')');
+
+            return this;
+        }
+
+        public ISQLGenerator<TEntity> AddLike(Expression<Func<TEntity, object>> expressions, string value)
+        {
+            const string WHERE = "WHERE";
+
+            this.PropertyNameWhere = ExpressionPropertyName.For<TEntity>(expressions);
+
+            if (sb.ToString().Contains(WHERE, StringComparison.OrdinalIgnoreCase) == false)
+            {
+                sb.Append(' ').Append('\n').Append(WHERE).Append(' ');
+            }
+
+            sb.Append('(');
+            sb.Append(this.PropertyNameWhere).Append(' ');
+            sb.Append(' ').Append("LIKE").Append(' ').Append($"'{value}'");
+            sb.Append(')');
+
+            return this;
+        }
+
+        public ISQLGenerator<TEntity> AddNotLike(Expression<Func<TEntity, object>> expressions, string value)
+        {
+            const string WHERE = "WHERE";
+
+            this.PropertyNameWhere = ExpressionPropertyName.For<TEntity>(expressions);
+
+            if (sb.ToString().Contains(WHERE, StringComparison.OrdinalIgnoreCase) == false)
+            {
+                sb.Append(' ').Append('\n').Append(WHERE).Append(' ');
+            }
+
+            sb.Append('(');
+            sb.Append(this.PropertyNameWhere).Append(' ');
+            sb.Append(' ').Append("NOT LIKE").Append(' ').Append($"'{value}'");
+            sb.Append(')');
+
+            return this;
+        }
+
+        public ISQLGenerator<TEntity> AddIsNull(Expression<Func<TEntity, object>> expressions)
+        {
+            const string WHERE = "WHERE";
+
+            this.PropertyNameWhere = ExpressionPropertyName.For<TEntity>(expressions);
+
+            if (sb.ToString().Contains(WHERE, StringComparison.OrdinalIgnoreCase) == false)
+            {
+                sb.Append(' ').Append('\n').Append(WHERE).Append(' ');
+            }
+
+            sb.Append('(');
+            sb.Append(this.PropertyNameWhere).Append(' ');
+            sb.Append("IS NULL");
+            sb.Append(')');
+
+            return this;
+        }
+
+        public ISQLGenerator<TEntity> AddIsNotNull(Expression<Func<TEntity, object>> expressions)
+        {
+            const string WHERE = "WHERE";
+
+            this.PropertyNameWhere = ExpressionPropertyName.For<TEntity>(expressions);
+
+            if (sb.ToString().Contains(WHERE, StringComparison.OrdinalIgnoreCase) == false)
+            {
+                sb.Append(' ').Append('\n').Append(WHERE).Append(' ');
+            }
+
+            sb.Append('(');
+            sb.Append(this.PropertyNameWhere).Append(' ');
+            sb.Append("IS NOT NULL");
+            sb.Append(')');
+
+            return this;
+        }
+
+        public ISQLGenerator<TEntity> AddGlob(Expression<Func<TEntity, object>> expressions, string value)
+        {
+            const string WHERE = "WHERE";
+
+            this.PropertyNameWhere = ExpressionPropertyName.For<TEntity>(expressions);
+
+            if (sb.ToString().Contains(WHERE, StringComparison.OrdinalIgnoreCase) == false)
+            {
+                sb.Append(' ').Append('\n').Append(WHERE).Append(' ');
+            }
+
+            sb.Append('(');
+            sb.Append(this.PropertyNameWhere).Append(' ');
+            sb.Append(' ').Append("GLOB").Append(' ').Append($"'{value}'");
+            sb.Append(')');
 
             return this;
         }
@@ -347,6 +749,40 @@ namespace Console.Expressions
 
             return this;
         }
+
+        public ISQLGenerator<TEntity> AddGroupBy(params Expression<Func<TEntity, object>>[] expressions)
+        {
+            const string FROM = "FROM";
+            const string WHERE = "WHERE";
+            const string GROUPBY = "GROUP BY";
+
+            if (sb.ToString().Contains(FROM, StringComparison.OrdinalIgnoreCase) == true && sb.ToString().Contains(WHERE, StringComparison.OrdinalIgnoreCase) == false)
+            {
+                sb.Append(' ').Append('\n').Append(GROUPBY).Append(' ');
+                sb.Append(' ').Append(string.Join(", ", expressions.Select(s => ExpressionPropertyName.For<TEntity>(s))));
+            }
+
+            return this;
+        }
+
+        public ISQLGenerator<TEntity> AddHaving(params Expression<Func<TEntity, object>>[] expressions)
+        {
+            const string FROM = "FROM";
+            const string WHERE = "WHERE";
+            const string GROUPBY = "GROUP BY";
+            const string HAVING = "HAVING";
+
+            if (sb.ToString().Contains(FROM, StringComparison.OrdinalIgnoreCase) == true
+                && sb.ToString().Contains(WHERE, StringComparison.OrdinalIgnoreCase) == true 
+                && sb.ToString().Contains(GROUPBY, StringComparison.OrdinalIgnoreCase) == true)
+            {
+                sb.Append(' ').Append('\n').Append(HAVING).Append(' ');
+                sb.Append(' ').Append(string.Join(", ", expressions.Select(s => ExpressionPropertyName.For<TEntity>(s))));
+            }
+
+            return this;
+        }
+
 
         public string ToSql()
         {
@@ -494,6 +930,10 @@ namespace Console.Expressions
             {
                 result = " IN(@) ";
             }
+            else if (sqlCompare == SQLComparison.NotIn)
+            {
+                result = " NOT IN(@) ";
+            }
             else if (sqlCompare == SQLComparison.Like)
             {
                 result = " LIKE ";
@@ -568,8 +1008,6 @@ namespace Console.Expressions
         All = 0,
         [Description("Count Anzahl")]
         Count = 1,
-        [Description("Limit Anzahl")]
-        Limit = 2,
         [Description("SQL Anweisung")]
         Direct = 3,
     }

@@ -31,6 +31,15 @@ namespace Console.Model
             this.Age = this.GetAge(birthday);
         }
 
+        public Contact(string name, DateTime birthday, decimal betrag)
+        {
+            this.Id = Guid.NewGuid();
+            this.Name = name;
+            this.Birthday = birthday;
+            this.Age = this.GetAge(birthday);
+            this.Betrag = betrag;
+        }
+
         [PrimaryKey]
         [TableColumn(SQLiteDataType.Guid)]
         public Guid Id { get; set; }
@@ -53,6 +62,10 @@ namespace Console.Model
                 this.age = value;
             }
         }
+
+        [TableColumn(SQLiteDataType.Decimal,8,3)]
+        public decimal Betrag { get; }
+
 
         [TableColumn(SQLiteDataType.Boolean)]
         public bool IsActive { get; }
