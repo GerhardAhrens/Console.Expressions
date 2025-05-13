@@ -68,7 +68,7 @@ namespace Console.Model
 
 
         [TableColumn(SQLiteDataType.Boolean)]
-        public bool IsActive { get; }
+        public bool IsActive { get; set; }
 
         private int GetAge(DateTime dateOfBirth)
         {

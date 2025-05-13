@@ -40,7 +40,7 @@ namespace Console.Expressions
             if (string.IsNullOrEmpty(text) == true)
             {
                 Console.Write('\n');
-                Console.WriteLine("Eine Taste drücken, um zum Menü zurückzukehren!");
+                Console.WriteLine("Eine Taste drücken, um zum Menü zurück zukehren!");
             }
             else
             {

@@ -202,30 +202,39 @@ namespace Console.Expressions
 
         public ISQLGenerator<TEntity> Delete(params Expression<Func<TEntity, object>>[] expressions)
         {
+            const string DELETE = "DELETE";
+            const string WHERE = "WHERE";
+            const string AND = "AND";
+
             string tableName = this.DataTableAttributes();
 
             sb.Clear();
-            sb.Append($"UPDATE {tableName}").Append(' ').Append('\n');
-            if (sb.ToString().Contains("WHERE", StringComparison.OrdinalIgnoreCase) == false)
+            sb.Append($"{DELETE} {tableName}").Append(' ');
+            if (expressions != null && expressions.Length > 0)
             {
-                sb.Append(' ').Append("WHERE").Append(' ');
+                if (sb.ToString().Contains(WHERE, StringComparison.OrdinalIgnoreCase) == false)
+                {
+                    sb.Append('\n').Append(' ').Append(WHERE).Append(' ');
+                }
+
+                sb.Append('(');
+
+                foreach (var item in expressions)
+                {
+                    string expName = ExpressionPropertyName.For<TEntity>(item);
+                    object propertyValue = typeof(TEntity).GetProperty(expName).GetValue(this.Entity);
+                    sb.Append(expName);
+                    sb.Append(" = ");
+                    sb.Append($"{this.ValueAsText(propertyValue)}");
+                    sb.Append(' ');
+                    sb.Append('\n');
+                    sb.Append(AND).Append(' ');
+                }
+
+                sb.Remove(sb.ToString().Length - (AND.Length + 1), AND.Length);
+
+                sb.Append(')');
             }
-
-            sb.Append('(').Append('\n');
-
-            foreach (var item in expressions)
-            {
-                string expName = ExpressionPropertyName.For<TEntity>(item);
-                object propertyValue = typeof(TEntity).GetProperty(expName).GetValue(this.Entity);
-                sb.Append(expName);
-                sb.Append(" = ");
-                sb.Append($"{this.ValueAsText(propertyValue)}");
-                sb.Append(' ');
-                sb.Append('\n');
-                sb.Append("AND").Append(' ');
-            }
-
-            sb.Append(')');
 
             return this;
         }
@@ -788,6 +797,22 @@ namespace Console.Expressions
         {
             string result = sb.ToString();
             sb.Clear();
+
+            if (result.Contains("DELETE", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                if (result.Contains("WHERE", StringComparison.OrdinalIgnoreCase) == false)
+                {
+                    throw new NotSupportedException($"DELETE ohne WHERE darf nicht verwendet werden! \n{result}");
+                }
+            }
+            else if (result.Contains("UPDATE", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                if (result.Contains("WHERE", StringComparison.OrdinalIgnoreCase) == false)
+                {
+                    throw new NotSupportedException($"UPDATE ohne WHERE darf nicht verwendet werden! \n{result}");
+                }
+            }
+
             return result;
         }
 

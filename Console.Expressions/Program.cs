@@ -46,6 +46,7 @@ namespace Console.Expressions
                 ConsoleMenu.Add("B4", "Select IsNull / IsNotNull");
                 ConsoleMenu.Add("C1", "Select Group By");
                 ConsoleMenu.Add("D1", "Update");
+                ConsoleMenu.Add("D2", "Delete");
                 string selectKey = ConsoleMenu.SelectKey();
 
                 if (selectKey == "X")
@@ -107,6 +108,10 @@ namespace Console.Expressions
                 else if (selectKey == "D1")
                 {
                     MenuPointD1();
+                }
+                else if (selectKey == "D2")
+                {
+                    MenuPointD2();
                 }
             }
             while (true);
@@ -448,6 +453,32 @@ namespace Console.Expressions
 
             result = cr.Update(x => x.Name).Where(w => w.Id, SQLComparison.Equals, "6599e87d-0d4a-4548-be38-2aef47483118").ToSql();
 
+            Console.Write($"{result}");
+            Console.Write('\n');
+            Console.Write('\n');
+
+            ConsoleMenu.Wait();
+        }
+
+        private static void MenuPointD2()
+        {
+            Console.Clear();
+            Contact contact = new Contact("Gerhard-Maus", new DateTime(1960, 6, 28), 33.66M);
+            contact.Id = new Guid("6599e87d-0d4a-4548-be38-2aef47483118");
+            contact.IsActive = true;
+
+            SQLGenerator<Contact> cr = new SQLGenerator<Contact>(contact);
+            string result = cr.Delete(x => x.Id).ToSql();
+            Console.Write($"{result}");
+            Console.Write('\n');
+            Console.Write('\n');
+
+            result = cr.Delete(x => x.Age,x => x.IsActive).ToSql();
+            Console.Write($"{result}");
+            Console.Write('\n');
+            Console.Write('\n');
+
+            result = cr.Delete().Where(x => x.Age,SQLComparison.Equals,64).AddWhereAnd(w => w.IsActive,SQLComparison.Equals,true).ToSql();
             Console.Write($"{result}");
             Console.Write('\n');
             Console.Write('\n');
