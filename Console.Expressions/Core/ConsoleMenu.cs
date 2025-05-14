@@ -20,14 +20,22 @@ namespace Console.Expressions
 
     public class ConsoleMenu
     {
-        private static Dictionary<string,string> menuList = new Dictionary<string,string>();
+        private static Dictionary<string,Tuple<string,Action>> menuList = new Dictionary<string, Tuple<string, Action>>();
         private static List<char> inputKeys = new List<char>();
 
         public static void Add(string mpoint, string mtext)
         {
             if (menuList.ContainsKey(mpoint) == false)
             {
-                menuList.Add(mpoint, mtext);
+                menuList.Add(mpoint, new Tuple<string, Action>(mtext, null));
+            }
+        }
+
+        public static void Add(string mpoint, string mtext, Action action)
+        {
+            if (menuList.ContainsKey(mpoint) == false)
+            {
+                menuList.Add(mpoint, new Tuple<string, Action>(mtext, action));
             }
         }
 
@@ -53,21 +61,19 @@ namespace Console.Expressions
             Console.CursorVisible = true;
         }
 
-        public static string SelectKey()
+        public static string SelectKey(int left = 0, int top = 0)
         {
             string resultKeys = string.Empty;
             ConsoleColor defaultColor = Console.ForegroundColor;
 
             Console.Clear();
-            foreach (KeyValuePair<string, string> mtext in menuList)
+            Console.SetCursorPosition(left, top);
+            int topStep = -1;
+            foreach (KeyValuePair<string, Tuple<string, Action>> mtext in menuList)
             {
-                Console.WriteLine($"{mtext.Key}. {mtext.Value}");
-            }
-
-            if (menuList.ContainsKey("X") == false)
-            {
-                menuList.Add("X", "Beenden");
-                Console.WriteLine("X. Beenden");
+                topStep++;
+                Console.SetCursorPosition(left, (top + topStep));
+                Console.WriteLine($"{mtext.Key}. {mtext.Value.Item1}");
             }
 
             Console.ForegroundColor = ConsoleColor.Red;
@@ -97,7 +103,10 @@ namespace Console.Expressions
                 {
                     inputKeys.Add(key);
                 }
-
+                else if (inputKeys != null && inputKeys.Count == 2)
+                {
+                    inputKeys.Add(key);
+                }
 
                 string selectedKeys = string.Join("-", inputKeys);
 
@@ -110,6 +119,11 @@ namespace Console.Expressions
                 }
 
             } while (true);
+
+            if (resultKeys != "X")
+            {
+                menuList[resultKeys].Item2();
+            }
 
             return resultKeys;
         }

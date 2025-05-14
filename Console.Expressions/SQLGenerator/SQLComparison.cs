@@ -29,6 +29,7 @@ namespace Console.Expressions
         LessOrEquals,
         In,
         NotIn,
+        Glob,
         IsNull,
         IsNotNull,
         Sql,

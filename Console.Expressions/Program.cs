@@ -29,89 +29,30 @@ namespace Console.Expressions
 
         private static void Main(string[] args)
         {
+            ConsoleMenu.Add("1", "Create Tabele",() => MenuPoint1());
+            ConsoleMenu.Add("2", "Insert", () => MenuPoint2());
+            ConsoleMenu.Add("A1", "Select", () => MenuPointA1());
+            ConsoleMenu.Add("A2", "Select Where And", () => MenuPointA2());
+            ConsoleMenu.Add("A3", "Select Where Or", () => MenuPointA3());
+            ConsoleMenu.Add("A4", "Select Limit, Count", () => MenuPointA4());
+            ConsoleMenu.Add("A5", "Select Order By", () => MenuPointA5());
+            ConsoleMenu.Add("A6", "Select Direct SQL", ()  => MenuPointA6());
+            ConsoleMenu.Add("A7", "Select Between / Not Between", ()=> MenuPointA7());
+            ConsoleMenu.Add("A8", "Select In / Not In", () => MenuPointA8());
+            ConsoleMenu.Add("A9", "Select Like / Not Like / Glob", () => MenuPointA9());
+            ConsoleMenu.Add("AA1", "Select IsNull / IsNotNull", () => MenuPointA10());
+            ConsoleMenu.Add("C1", "Select Group By", () => MenuPointC1());
+            ConsoleMenu.Add("D1", "Update", () => MenuPointD1());
+            ConsoleMenu.Add("D2", "Delete", () => MenuPointD2());
+            ConsoleMenu.Add("X", "Beenden");
 
             do
             {
-                ConsoleMenu.Add("1", "Create Tabele");
-                ConsoleMenu.Add("2", "Insert");
-                ConsoleMenu.Add("A1", "Select");
-                ConsoleMenu.Add("A2", "Select Where And");
-                ConsoleMenu.Add("A3", "Select Where Or");
-                ConsoleMenu.Add("A4", "Select Limit, Count");
-                ConsoleMenu.Add("A5", "Select Order By");
-                ConsoleMenu.Add("A6", "Select Direct SQL");
-                ConsoleMenu.Add("B1", "Select Between / Not Between");
-                ConsoleMenu.Add("B2", "Select In / Not In");
-                ConsoleMenu.Add("B3", "Select Like / Not Like / Glob");
-                ConsoleMenu.Add("B4", "Select IsNull / IsNotNull");
-                ConsoleMenu.Add("C1", "Select Group By");
-                ConsoleMenu.Add("D1", "Update");
-                ConsoleMenu.Add("D2", "Delete");
-                string selectKey = ConsoleMenu.SelectKey();
+                string selectKey = ConsoleMenu.SelectKey(2,2);
 
                 if (selectKey == "X")
                 {
                     Environment.Exit(0);
-                }
-                else if (selectKey == "1")
-                {
-                    MenuPoint1();
-                }
-                else if (selectKey == "2")
-                {
-                    MenuPoint2();
-                }
-                else if (selectKey == "A1")
-                {
-                    MenuPointA1();
-                }
-                else if (selectKey == "A2")
-                {
-                    MenuPointA2();
-                }
-                else if (selectKey == "A3")
-                {
-                    MenuPointA3();
-                }
-                else if (selectKey == "A4")
-                {
-                    MenuPointA4();
-                }
-                else if (selectKey == "A5")
-                {
-                    MenuPointA5();
-                }
-                else if (selectKey == "A6")
-                {
-                    MenuPointA6();
-                }
-                else if (selectKey == "B1")
-                {
-                    MenuPointA7();
-                }
-                else if (selectKey == "B2")
-                {
-                    MenuPointA8();
-                }
-                else if (selectKey == "B3")
-                {
-                    MenuPointA9();
-                }
-                else if (selectKey == "B4")
-                {
-                    MenuPointB4();
-                }
-                else if (selectKey == "C1")
-                {
-                    MenuPointC1();
-                }
-                else if (selectKey == "D1")
-                {
-                    MenuPointD1();
-                }
-                else if (selectKey == "D2")
-                {
-                    MenuPointD2();
                 }
             }
             while (true);
@@ -392,7 +333,7 @@ namespace Console.Expressions
             ConsoleMenu.Wait();
         }
 
-        private static void MenuPointB4()
+        private static void MenuPointA10()
         {
             Console.Clear();
 
