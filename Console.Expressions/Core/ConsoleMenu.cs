@@ -120,7 +120,7 @@ namespace Console.Expressions
 
             } while (true);
 
-            if (resultKeys != "X")
+            if (menuList.ContainsKey(resultKeys) == true)
             {
                 menuList[resultKeys].Item2();
             }

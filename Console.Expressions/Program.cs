@@ -44,18 +44,18 @@ namespace Console.Expressions
             ConsoleMenu.Add("C1", "Select Group By", () => MenuPointC1());
             ConsoleMenu.Add("D1", "Update", () => MenuPointD1());
             ConsoleMenu.Add("D2", "Delete", () => MenuPointD2());
-            ConsoleMenu.Add("X", "Beenden");
+            ConsoleMenu.Add("X", "Beenden", () => ApplicationExit());
 
             do
             {
-                string selectKey = ConsoleMenu.SelectKey(2,2);
-
-                if (selectKey == "X")
-                {
-                    Environment.Exit(0);
-                }
+                _ = ConsoleMenu.SelectKey(2,2);
             }
             while (true);
+        }
+
+        private static void ApplicationExit()
+        {
+            Environment.Exit(0);
         }
 
         private static void MenuPoint1()
